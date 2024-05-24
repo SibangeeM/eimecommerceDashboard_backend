@@ -1,7 +1,10 @@
+const dotenv = require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const dotenv = require("dotenv").config();
+
+
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
@@ -14,117 +17,53 @@ mongoose
   .then(() => console.log("Connect to Databse"))
   .catch((err) => console.log(err));
 
-//schema
+//user schema
 const userSchema = mongoose.Schema({
-  image:String,
-  name: String,
+  
+  username: String,
   email: {
     type: String,
     unique: true,
-  },
-  phone: String,
-  address: String,
-  apt: String,
-  city: String,
-  state: String,
-  zipcode: String,
-  isBusinessOwner: Boolean,
-  selectedRole: String,
-  businessName: String,
-  businessType: String,
-  licenseNumber: String,
-  registeredAddress: String,
-  companyName: String,
-  servicableRegions: String,
+  }, 
   password: String,
-  confirmPassword: String,
 });
+const adminUsersModel = mongoose.model("adminUsers", userSchema);
 
-const userModel = mongoose.model("users", userSchema);
+
 //api
 app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-//signup api
-app.post("/signup", async (req, res) => {
-  console.log(req.body);
-  const { email, password } = req.body;
-  try {
-    const existingUser = await userModel.findOne({ email }).exec();
-
-    if (existingUser) {
-      res.send({ message: "Email id is already registered", alert: false });
-    } else {
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
-
-      // Create a new user object with the hashed password
-      const newUser = new userModel({
-        ...req.body,
-        password: hashedPassword,
-      });
-
-      // Save the user to the database
-      const savedUser = await newUser.save();
-
-      res.send({ message: "Successfully signed up", alert: true });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Internal Server Error", alert: false });
-  }
-});
-
 //login api
-const bcrypt = require("bcrypt");
-
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await userModel.findOne({ email }).exec();
+  const { username, email, password } = req.body;
+  const user = await adminUsersModel.findOne({ email }).exec();
 
   if (user) {
     // Compare passwords
-    bcrypt.compare(password, user.password, (err, result) => {
-      if (err) {
-        // Handle error
-        console.error("Error comparing passwords:", err);
-        res.status(500).send({ message: "Internal Server Error" });
-      } else if (result) {
-        // Passwords match
+      if( user.username === username && user.password === password && user.email === email ){
         const dataSend = {
           _id: user._id,
-          name: user.name,
+          username: user.username,
           email: user.email,
-          phone: user.phone,
-          image: user.image,
-          apt: user.apt,
-          city: user.city,
-          state: user.state,
-          zipcode: user.zipcode,
-          isBusinessOwner: user.isBusinessOwner,
-          selectedRole: user.selectedRole,
-          businessName: user.businessName,
-          businessType: user.businessType,
-          licenseNumber: user.licenseNumber,
-          registeredAddress: user.registeredAddress,
-          companyName: user.companyName,
-          servicableRegions: user.servicableRegions,
         };
         res.send({
           message: "Login is successful",
           alert: true,
           data: dataSend,
         });
-      } else {
+      }
+        // Passwords match    
+      else {
         // Passwords don't match
         res.send({
           message: "Invalid email or password",
           alert: false,
         });
       }
-    });
-  } else {
+    }
+    else {
     // User not found
     res.send({
       message: "Email is not available, please sign up",
@@ -137,17 +76,19 @@ app.post("/login", async (req, res) => {
 const schemaProduct = mongoose.Schema({
   name: String,
   materials: String,
+  materialName: String,
   image: String,
-  grade:String,
   pricePound: String,
-  priceTon: String,
   description: String,
 });
 const productModel = mongoose.model("product", schemaProduct);
+
+
 //save product in data
 //api
+
 app.post("/uploadProduct", async (req, res) => {
-  // console.log(req.body)
+  console.log(res)
   const data = await productModel(req.body);
   const datasave = await data.save();
   res.send({ message: "Upload successfully" });
@@ -157,6 +98,118 @@ app.get("/product", async (req, res) => {
   const data = await productModel.find({});
   res.send(JSON.stringify(data));
 });
+
+
+// orders
+const orderSchema = mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+    },
+    username: {
+      type: String,
+      required: true,
+    },
+    orderItems: [
+      {
+        name: { type: String, required: true },
+        qty: { type: Number, required: true },
+        image: { type: String, required: true },
+        price: { type: Number, required: true },
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          ref: "Product",
+        },
+      },
+    ],
+    shippingAddress: {
+      address: { type: String, required: true },
+      city: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true },
+    },
+    paymentMethod: {
+      type: String,
+      required: true,
+      default: "Paypal",
+    },
+    paymentResult: {
+      id: { type: String },
+      status: { type: String },
+      update_time: { type: String },
+      email_address: { type: String },
+    },
+    shippingPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    totalPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    isPaid: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    paidAt: {
+      type: Date,
+    },
+    isDelivered: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    deliveredAt: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+const orderModel = mongoose.model("Order", orderSchema);
+
+
+app.get("/orders", async (req, res) => {
+  const data = await orderModel.find({});
+  res.send(JSON.stringify(data));
+});
+
+
+//remove product from ecommerce site as well
+app.delete("/product/:productId", async (req, res) => {
+  const { productId } = req.params;
+  console.log("Attempting to delete product with ID:", productId);
+
+  try {
+    const product = await productModel.findByIdAndDelete(productId);
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+        success: false,
+      });
+    }
+
+    res.json({
+      message: "Product deleted successfully",
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting the product",
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+
 
 //server is ruuning
 app.listen(PORT, () => console.log("server is running at port : " + PORT));
