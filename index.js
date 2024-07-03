@@ -152,6 +152,10 @@ const orderSchema = mongoose.Schema(
       required: true,
       default: 0.0,
     },
+    orderStatus: {
+      type: String,
+      required: true
+    },
     isPaid: {
       type: Boolean,
       required: true,
@@ -209,6 +213,39 @@ app.delete("/product/:productId", async (req, res) => {
   }
 });
 
+// API to change the orderStatus
+app.put("/updateOrderStatus", async (req, res) => {
+  const { orderID, orderStatus } = req.body;
+
+  try {
+    const updatedOrder = await orderModel.findByIdAndUpdate(
+      orderID,
+      { orderStatus: orderStatus },
+      { new: true }
+    );
+
+    if (updatedOrder) {
+      res.json({
+        success: true,
+        message: "Order status updated successfully",
+        order: updatedOrder
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error updating the order status",
+      error: error.message
+    });
+  }
+});
+
+// Update product details
 
 
 //server is ruuning
