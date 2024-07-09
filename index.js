@@ -14,7 +14,7 @@ console.log(process.env.MONGODB_URL);
 mongoose.set("strictQuery", false);
 mongoose
   .connect(process.env.MONGODB_URL)
-  .then(() => console.log("Connect to Databse"))
+  .then(() => console.log("Connect to Database"))
   .catch((err) => console.log(err));
 
 //user schema
@@ -245,7 +245,31 @@ app.put("/updateOrderStatus", async (req, res) => {
   }
 });
 
-// Update product details
+// contact us form schema
+const formSchema = mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const formModel = mongoose.model("Form", formSchema);
+app.get("/message", async (req, res) => {
+  const data = await formModel.find({});
+  // console.log(data)
+  res.send(JSON.stringify(data));
+});
+
 
 
 //server is ruuning
